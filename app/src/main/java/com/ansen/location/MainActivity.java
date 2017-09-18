@@ -1,11 +1,14 @@
 package com.ansen.location;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -21,6 +24,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvLocation;
     private TextView tvAddress;
 
+    //位置权限需要临时获取
+    private String[] perms = {Manifest.permission.ACCESS_FINE_LOCATION};
+    private final int PERMS_REQUEST_CODE = 200;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -30,7 +37,14 @@ public class MainActivity extends AppCompatActivity {
         tvAddress= (TextView) findViewById(R.id.tv_address);
 
         locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
-        startRequestLocation();
+
+        //Android 6.0以上版本需要临时获取权限
+        if(Build.VERSION.SDK_INT>Build.VERSION_CODES.LOLLIPOP_MR1&&
+                PackageManager.PERMISSION_GRANTED!=checkSelfPermission(perms[0])) {
+            requestPermissions(perms,PERMS_REQUEST_CODE);
+        }else{
+            startRequestLocation();
+        }
     }
 
     private void startRequestLocation(){
@@ -84,17 +98,29 @@ public class MainActivity extends AppCompatActivity {
         if(location!=null){
             tvLocation.setText("经度："+location.getLongitude()+"\n"+"纬度："+location.getLatitude());
         }
-
         Geocoder geocoder = new Geocoder(this,Locale.CHINA);
         try {
             //参数1:纬度 参数2:经度 参数3:返回地址的数目（由于同一经纬度可能对于多个地址，该参数取1-5之间）
             List<Address> addressList = geocoder.getFromLocation(location.getLatitude(),location.getLongitude(),1);
             for (Address address : addressList) {
-                tvAddress.setText(address.getCountryName()+" "+address.getLocality()+" "+address.getThoroughfare());
+                tvAddress.setText(address.getCountryName()+" "+address.getLocality());
                 Log.i("ansen", address.toString());
             }
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int permsRequestCode, String[] permissions, int[] grantResults){
+        switch(permsRequestCode){
+            case PERMS_REQUEST_CODE:
+                boolean storageAccepted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
+                if(storageAccepted){
+                    startRequestLocation();
+                }
+                break;
+
         }
     }
 
